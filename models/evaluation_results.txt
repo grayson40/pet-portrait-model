@@ -1,0 +1,12 @@
+Model Evaluation Results
+=======================
+
+Accuracy Metrics:
+Looking Accuracy: 0.9910
+Quality MSE: 0.0065
+Average Keypoint Error: 69.2755
+
+Speed Metrics:
+Average Inference Time: 404.55ms
+Std Dev: 30.67ms
+FPS: 2.47
