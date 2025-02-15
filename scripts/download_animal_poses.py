@@ -5,6 +5,7 @@ import tarfile
 from pathlib import Path
 from tqdm import tqdm
 
+
 def extract_and_organize_dataset():
     # Create directories
     base_dir = Path("data")
@@ -14,9 +15,9 @@ def extract_and_organize_dataset():
     # Expected files from the Animal Pose website
     expected_files = [
         "bndbox_anno.tar.gz",
-        "bndbox_image.tar.gz", 
+        "bndbox_image.tar.gz",
         "keypoints.json",
-        "Self_collected_Images.tar.gz"
+        "Self_collected_Images.tar.gz",
     ]
 
     # Check for downloaded files
@@ -28,20 +29,22 @@ def extract_and_organize_dataset():
 
     if not found_files:
         print("\nNo expected files found in:", raw_dir)
-        print("Please download the files from https://sites.google.com/view/animal-pose/")
+        print(
+            "Please download the files from https://sites.google.com/view/animal-pose/"
+        )
         print("and place them in:", raw_dir)
         print("\n".join(f"- {f}" for f in expected_files))
         sys.exit(1)
 
     # Extract all archive files found
     for file_path in found_files:
-        if file_path.name.endswith('.json'):
+        if file_path.name.endswith(".json"):
             continue  # Skip json files as they don't need extraction
-            
+
         print(f"\nExtracting {file_path.name}...")
         try:
-            if file_path.name.endswith('.tar.gz'):
-                with tarfile.open(file_path, 'r:gz') as tar:
+            if file_path.name.endswith(".tar.gz"):
+                with tarfile.open(file_path, "r:gz") as tar:
                     # List all files to extract for progress bar
                     members = tar.getmembers()
                     for member in tqdm(members, desc=f"Extracting {file_path.name}"):
@@ -57,11 +60,14 @@ def extract_and_organize_dataset():
         "bndbox_anno",
         "bndbox_image",
         "keypoints.json",
-        "Self_collected_Images"
+        "Self_collected_Images",
     ]
-    missing_items = [item for item in expected_items 
-                    if not any((raw_dir / item).exists() for ext in ['', '.tar.gz', '.json'])]
-    
+    missing_items = [
+        item
+        for item in expected_items
+        if not any((raw_dir / item).exists() for ext in ["", ".tar.gz", ".json"])
+    ]
+
     if missing_items:
         print(f"Warning: Missing items: {missing_items}")
         print("The dataset might not have been downloaded or extracted correctly.")
@@ -84,8 +90,9 @@ def extract_and_organize_dataset():
     print("\nNote: You can now safely delete the archive files to save space.")
     print("The following files can be deleted:")
     for file_path in found_files:
-        if file_path.suffix in ['.gz']:
+        if file_path.suffix in [".gz"]:
             print(f"- {file_path}")
+
 
 if __name__ == "__main__":
     print("Starting Animal Pose Dataset organization...")

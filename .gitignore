@@ -47,3 +47,6 @@ Thumbs.db
 
 # Model checkpoints
 *.pth
+
+# Ruff
+.ruff_cache/

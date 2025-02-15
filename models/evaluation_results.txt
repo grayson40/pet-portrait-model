@@ -2,11 +2,11 @@ Model Evaluation Results
 =======================
 
 Accuracy Metrics:
-Looking Accuracy: 0.9910
-Quality MSE: 0.0065
-Average Keypoint Error: 69.2755
+Looking Accuracy: 0.7816
+Keypoint Error: 160.7184
+Bbox Error: 500.6565
+Pose Quality Error: 0.7082
 
 Speed Metrics:
-Average Inference Time: 404.55ms
-Std Dev: 30.67ms
-FPS: 2.47
+Average Inference Time: 530.31 ms
+Frames Per Second: 1.89

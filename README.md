@@ -72,27 +72,22 @@ python scripts/train.py
 python scripts/evaluate_model.py
 ```
 
-### First Model Results
+### Model Results
 
-#### Classification Performance
+#### First Model (Baseline)
 - Looking Accuracy: 99.10%
 - Quality MSE: 0.0065
 - Keypoint Error: 69.28
-
-#### Class Distribution
-- Looking at camera: 99.1%
-- Not looking: 0.9%
-- Note: Significant class imbalance detected
-
-#### Speed Metrics
 - Average Inference: 404.55ms
-- FPS: 2.47
-- Platform: CPU
+- FPS: 2.47 (CPU)
 
-### Next Steps
-1. Address class imbalance in looking/not-looking classification
-2. Optimize model for faster inference
-3. Improve keypoint prediction accuracy
+#### Second Model (Current)
+- Looking Accuracy: 78.16%
+- Keypoint Error: 160.72
+- Bbox Error: 500.66
+- Pose Quality Error: 0.71
+- Average Inference: 530.31ms
+- FPS: 1.89 (CPU)
 
 ## Project Structure
 ```

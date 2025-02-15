@@ -2,98 +2,164 @@ import torch
 import torch.nn as nn
 import torchvision.models as models
 
+
 class PetPortraitModel(nn.Module):
     def __init__(self, pretrained=True):
         super(PetPortraitModel, self).__init__()
-        
-        # Load pretrained ResNet18
+
+        # Load pretrained ResNet18 but freeze some layers to reduce overfitting
         self.backbone = models.resnet18(pretrained=pretrained)
-        
-        # Get the number of features from the last layer
+
+        # Freeze early layers
+        for param in list(self.backbone.parameters())[:-4]:  # Keep last block trainable
+            param.requires_grad = False
+
         num_features = self.backbone.fc.in_features
-        
-        # Remove the final fully connected layer
         self.backbone = nn.Sequential(*list(self.backbone.children())[:-1])
-        
-        # Add custom heads for our tasks
-        
-        # 1. Looking at camera classification head
+
+        # Reduced capacity looking head with increased regularization
         self.looking_head = nn.Sequential(
-            nn.Linear(num_features, 512),
+            nn.Linear(num_features, 512),  # Reduced from 1024
+            nn.BatchNorm1d(512),  # Added BatchNorm
             nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(512, 1),  # Single output for binary classification
-            nn.Sigmoid()
-        )
-        
-        # 2. Pose quality regression head
-        self.pose_quality_head = nn.Sequential(
-            nn.Linear(num_features, 512),
+            nn.Dropout(0.5),  # Increased dropout
+            nn.Linear(512, 256),  # Added intermediate layer
+            nn.BatchNorm1d(256),
             nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(512, 1),
-            nn.Sigmoid()
-        )
-        
-        # 3. Keypoint regression head
-        self.keypoint_head = nn.Sequential(
-            nn.Linear(num_features, 1024),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(1024, 20 * 2)  # 20 keypoints, each with x,y coordinates
+            nn.Dropout(0.5),
+            nn.Linear(256, 1),
+            nn.Sigmoid(),
         )
 
-    def forward(self, x):
-        # Get features from backbone
-        x = self.backbone(x)
-        x = torch.flatten(x, 1)  # Flatten the features
-        
-        # Get predictions from each head
-        looking = self.looking_head(x)
-        pose_quality = self.pose_quality_head(x)
-        keypoints = self.keypoint_head(x).view(-1, 20, 2)  # Reshape to (batch_size, 20, 2)
-        
-        return {
-            'looking': looking.squeeze(),  # Shape: (batch_size,)
-            'pose_quality': pose_quality.squeeze(),  # Shape: (batch_size,)
-            'keypoints': keypoints  # Shape: (batch_size, 20, 2)
-        }
+        # Simplified pose quality head
+        self.pose_quality_head = nn.Sequential(
+            nn.Linear(num_features, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(256, 1),
+            nn.Sigmoid(),
+        )
+
+        # Simplified keypoint head
+        self.keypoint_head = nn.Sequential(
+            nn.Linear(num_features, 512),  # Reduced from 1024
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(512, 20 * 3),
+        )
+
+        # Simplified bbox head
+        self.bbox_head = nn.Sequential(
+            nn.Linear(num_features, 256),
+            nn.BatchNorm1d(256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(256, 4),
+        )
+
+    def forward(self, x, dataset_source=None):
+        # Extract features
+        features = self.backbone(x)
+        features = torch.flatten(features, 1)
+
+        # Primary task: looking classification
+        looking = self.looking_head(features)
+
+        # Initialize outputs
+        outputs = {"looking": looking.squeeze(-1)}
+
+        # Add Animal Pose specific outputs if needed
+        if dataset_source == "animal_pose":
+            outputs.update(
+                {
+                    "pose_quality": self.pose_quality_head(features).squeeze(-1),
+                    "keypoints": self.keypoint_head(features).view(-1, 20, 3),
+                    "bbox": self.bbox_head(features),
+                }
+            )
+        else:
+            batch_size = x.size(0)
+            outputs.update(
+                {
+                    "pose_quality": torch.zeros(batch_size, device=x.device),
+                    "keypoints": torch.zeros(batch_size, 20, 3, device=x.device),
+                    "bbox": torch.zeros(batch_size, 4, device=x.device),
+                }
+            )
+
+        return outputs
 
     def predict_optimal_moment(self, x, threshold=0.7):
-        """Helper method to determine if this is a good moment to take a photo"""
         with torch.no_grad():
             predictions = self(x)
-            is_looking = predictions['looking'] > threshold
-            pose_quality = predictions['pose_quality']
-            
-            # Consider it a good moment if the pet is looking and pose quality is good
-            optimal_moment = is_looking & (pose_quality > threshold)
-            
-            return optimal_moment, predictions
+            is_looking = predictions["looking"] > threshold
+            return is_looking, predictions
+
+    def get_loss_weights(self, batch_size, dataset_source):
+        # Reduced weights for auxiliary tasks
+        if dataset_source == "animal_pose":
+            return {
+                "looking": 1.0,
+                "pose_quality": 0.3,  # Reduced from 0.5
+                "keypoints": 0.2,  # Reduced from 0.3
+                "bbox": 0.2,  # Reduced from 0.3
+            }
+        else:
+            return {"looking": 1.0, "pose_quality": 0.0, "keypoints": 0.0, "bbox": 0.0}
+
 
 if __name__ == "__main__":
-    # Test the model
+    # Initialize model
     model = PetPortraitModel(pretrained=True)
-    
-    # Create a sample input (batch_size=2, channels=3, height=224, width=224)
-    sample_input = torch.randn(2, 3, 224, 224)
-    
-    # Get predictions
-    predictions = model(sample_input)
-    
-    # Print output shapes
-    print("\nModel Output Shapes:")
-    for key, value in predictions.items():
-        print(f"{key}: {value.shape}")
-    
-    # Test optimal moment prediction
-    optimal, preds = model.predict_optimal_moment(sample_input)
-    print("\nOptimal Moment Shape:", optimal.shape)
-    
-    # Calculate number of parameters
+
+    # Print model architecture
+    print("\nModel Architecture:")
+    print(model)
+
+    # Count parameters
     total_params = sum(p.numel() for p in model.parameters())
-    print(f"\nTotal parameters: {total_params:,}")
-    
-    # Model size estimation (in MB)
-    model_size = total_params * 4 / (1024 * 1024)  # 4 bytes per parameter
-    print(f"Estimated model size: {model_size:.2f} MB")
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+    print(f"\nModel Statistics:")
+    print(f"Total parameters: {total_params:,}")
+    print(f"Trainable parameters: {trainable_params:,}")
+    print(f"Frozen parameters: {total_params - trainable_params:,}")
+
+    # Test forward pass
+    print("\nTesting forward pass...")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
+
+    # Create sample batch
+    batch_size = 4
+    x = torch.randn(batch_size, 3, 224, 224).to(device)
+
+    # Test regular forward pass
+    print("\nRegular forward pass:")
+    outputs = model(x)
+    for k, v in outputs.items():
+        print(f"{k}: {tuple(v.shape)}")
+
+    # Test animal pose forward pass
+    print("\nAnimal pose forward pass:")
+    outputs = model(x, dataset_source="animal_pose")
+    for k, v in outputs.items():
+        print(f"{k}: {tuple(v.shape)}")
+
+    # Test prediction
+    print("\nTesting prediction:")
+    is_looking, predictions = model.predict_optimal_moment(x)
+    print(f"Is looking shape: {is_looking.shape}")
+
+    # Test loss weights
+    print("\nLoss weights:")
+    print("Regular dataset:", model.get_loss_weights(batch_size, None))
+    print("Animal pose dataset:", model.get_loss_weights(batch_size, "animal_pose"))
+
+    # Memory usage
+    print("\nMemory Usage:")
+    if torch.cuda.is_available():
+        print(f"GPU Memory allocated: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
+        print(f"GPU Memory cached: {torch.cuda.memory_reserved() / 1024**2:.2f} MB")

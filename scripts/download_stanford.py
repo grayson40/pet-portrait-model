@@ -3,6 +3,7 @@ import wget
 import tarfile
 from pathlib import Path
 
+
 def download_and_extract_dataset():
     # Create directories if they don't exist
     base_dir = Path("data")
@@ -27,6 +28,7 @@ def download_and_extract_dataset():
         with tarfile.open(filename) as tar:
             tar.extractall(path=raw_dir)
         print("Extraction complete!")
+
 
 if __name__ == "__main__":
     print("Starting Stanford Dogs Dataset download...")
