@@ -72,22 +72,54 @@ python scripts/train.py
 python scripts/evaluate_model.py
 ```
 
-### Model Results
+## Model Results
 
-#### First Model (Baseline)
+### First Model (Baseline)
 - Looking Accuracy: 99.10%
 - Quality MSE: 0.0065
 - Keypoint Error: 69.28
 - Average Inference: 404.55ms
 - FPS: 2.47 (CPU)
 
-#### Second Model (Current)
+### Second Model (Previous)
 - Looking Accuracy: 78.16%
 - Keypoint Error: 160.72
 - Bbox Error: 500.66
 - Pose Quality Error: 0.71
 - Average Inference: 530.31ms
 - FPS: 1.89 (CPU)
+
+### Third Model (Current - Mobile Optimized)
+- Looking Accuracy: 90.42%
+- Precision: 90.45%
+- Recall: 90.42%
+- F1 Score: 90.42%
+- Average Inference Time: 9.90ms
+- FPS: 100.97
+- Memory Usage: 0.75MB
+- Model Size: 5.79MB
+- 90th Percentile Latency: 13.60ms
+- 95th Percentile Latency: 15.15ms
+
+## Mobile Optimization
+
+The current model has been optimized for mobile deployment using TFLite:
+
+1. Convert model:
+```bash
+python scripts/optimize_for_mobile.py
+```
+
+This generates:
+- `models/pet_portrait.tflite`: Optimized mobile model
+- `models/model_metadata.json`: Model metadata for mobile app
+
+### Mobile Optimization Features
+- INT8 quantization
+- MobileNetV3-Small backbone
+- Hardware acceleration support
+- Reduced memory footprint
+- Optimized for real-time inference
 
 ## Project Structure
 ```

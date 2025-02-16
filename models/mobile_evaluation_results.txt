@@ -1,0 +1,17 @@
+Mobile Model Evaluation Results
+=============================
+
+Accuracy Metrics:
+Accuracy: 0.9042
+Precision: 0.9045
+Recall: 0.9042
+F1 Score: 0.9042
+
+Mobile Performance Metrics:
+Average Inference Time: 9.90ms
+Inference Std Dev: 2.12ms
+Frames Per Second: 100.97
+90th Percentile Latency: 13.60ms
+95th Percentile Latency: 15.15ms
+Memory Usage: 0.75MB
+Model Size: 5.79MB
